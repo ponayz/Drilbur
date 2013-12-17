@@ -32,5 +32,11 @@ listener.subscribe('/UpDown', function(data) {
 		client.stop();
 		client.land();
 	}
-
 });
+
+client.createPngStream().on("data", function(frame) {
+    setTimeout( listener.publish('/Img', frame), 30); //delay de 15ms pour simuler le 60fps a test...
+}); 
+
+  //petit souci pour les images, on a pas un path du coups chaud a metre dans une balise img classique a voir
+//img.src = 'data:image/jpeg;base64,' + btoa('your-binary-data');

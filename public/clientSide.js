@@ -2,10 +2,9 @@ var fayeClient = new Faye.Client('/faye',{
 	timeout : 120
 });
 
-/*client.subscribe('/messages', function(message) {
-  alert('Got a message: ' + message.text);
-});*/
-
+fayeClient.subscribe('/Img', function(data) {
+	document.getElementById('video').src = 'data:image/png;base64,' + btoa(data); //a test ... 
+});
 
 var canvas = document.getElementById( 'canv' );
 var c =  canvas.getContext( '2d' );
