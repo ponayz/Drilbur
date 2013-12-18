@@ -2,9 +2,19 @@ var fayeClient = new Faye.Client('/faye',{
 	timeout : 120
 });
 
-fayeClient.subscribe('/Img', function(data) {
-	document.getElementById('video').src = 'data:image/png;base64,' + btoa(data); //a test ... 
+fayeClient.subscribe('/image', function(data) {
+	console.log(data.img);
+	//var src = 'data:image/png;base64,' + btoa(data.img);
+	//console.log(src);
+	//$('#video').attr("src",src )  //a test ... 
 });
+
+/*fayeClient.subscribe("/drone/image", function(src) {
+	console.log(src);
+    return $("#video").attr({
+      src: src
+    });
+});*/
 
 var canvas = document.getElementById( 'canv' );
 var c =  canvas.getContext( '2d' );
@@ -61,14 +71,14 @@ function onCircle( gesture ){
 	if( clockwise ){
 		c.stroke();
 
-		fayeClient.publish('/UpDown', {
+		return fayeClient.publish('/UpDown', {
 			action : "takeoff"
 		});
 			
 	}else{
 		c.fill();
 
-		fayeClient.publish('/UpDown', {
+		return fayeClient.publish('/UpDown', {
 			action : "land"
 		});
 	}

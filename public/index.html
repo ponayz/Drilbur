@@ -8,8 +8,14 @@
 	<h1>Drilbur</h1>
 	<p>Drone Reconnaissace Intelligente du Leap-Motion par le Biais d Un Reseau</p>
 	<img src="Img/drilbur.png"> <br />
-	<img style = "width : 1000px; height : 1000px;" src="Img/drilbur.png" id = "video">
+	<img style = "width : 1000px; height : 1000px;" src="" id = "video">
 	<canvas id="canv" style ="width:500px;height:500px;"></canvas>
+	<div id="droneStream"></div>
+	<script src="/dronestream/nodecopter-client.js"></script>
+	<script>
+  		// video canvas will auto-size to the DOM-node, or default to 640*360 if no size is set.
+		new NodecopterStream(document.getElementById("droneStream"));
+	</script>
 	<script src="/faye/client.js"></script>
 	<script src="leap.js"></script>
 	<script src="clientSide.js"></script>
