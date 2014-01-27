@@ -1,74 +1,84 @@
-var express = require('express'),
-	faye = require('faye'),
-	path = require('path'),
-	arDrone = require('ar-drone');
 
-var app = express();
-var client = arDrone.createClient();
+var express = require( 'express' );
+var faye = require( 'faye' );
+var path = require( 'path' );
+var arDrone = require( 'ar-drone' );
+var http = require( 'http' );
+var stream = require( 'dronestream' );
 
-app.configure(function() {
-    app.set('port',8000);
-    app.use(app.router);
-    app.use(express.static(path.join(__dirname, 'public')));
-    return app.use("/components", express.static(path.join(__dirname, 'components')));
-});
+var Serv = function(port) {
 
-var server = require("http").createServer(app);
-require("dronestream").listen(server); 
+	this.app = express();
+	this.client;
+	this.listener;
+	port ? this.portOf = port : this.portOf = 8000;
+}
 
-new faye.NodeAdapter({
-	mount: '/faye',
-	timeout: 45}).attach(server);
+Serv.prototype = {
 
-server.listen(8000);
+	configServer : 
+		function() {
+			var _this = this;
+			this.app.configure( function() {
+			    _this.app.set( 'port', _this.portOf );
+			    _this.app.use( _this.app.router );
+			    _this.app.use( express.static( path.join( __dirname, 'public' ) ) );
+			    return _this.app.use( "/components", express.static( path.join( __dirname, 'components' ) ) );
+			} );
+		},
 
-var listener = new faye.Client("http://localhost:8000/faye");
+	runServer :
+		function() {
+			
+			var toListen = http.createServer( this.app );
+			stream.listen( toListen ); 
+			
+			new faye.NodeAdapter( {
+				mount: '/faye',
+				timeout : 45
+			} ).attach( toListen );
 
-listener.subscribe('/UpDown', function(data) {
-	if(data.action == "takeoff"){
-		console.log('taking off!');
-		return client.takeoff();
-	}else if(data.action == "land" ){
-		console.log('landing');
-		return client.land();
-	}
-});
+			console.log(this.portOf);
+			toListen.listen( this.portOf );
+		},
 
-/*client.getPngStream()
-	.on('error', console.log )
-	.on("data", function(frame) {
-		console.log('bitch');
-		//setTimeout( listener.publish('/Img', frame), 20); //delay de 15ms pour simuler le 60fps a test...
-	});*/
+	createClient:
+		function(tab) {
+			this.client = arDrone.createClient();
+			
+			this.listener = new faye.Client( "http://localhost:" + this.portOf + "/faye" );
 
-/*imageSendingPaused = false;
-var currentImg;
+			if( tab instanceof Array ){
 
-client.getPngStream()
-	.on('error',console.log)
-	.on("data", function(data) {
-	    currentImg = data;
-	    console.log('tee');
+				if( tab.indexOf( 'UpDown' ) > -1 ){
+					var _this = this;
+					this.listener.subscribe( '/UpDown', function( data ) {						
+						
+						if( data.action == "takeoff" ){	
 
-	    if (imageSendingPaused) {
-	      return;
-	    }
-	    //setTimeout(function() {
-	    	console.log('hail');
-	    	return listener.publish("/image", {img : 'vfesf'});
-	    //},100);
-	   // imageSendingPaused = true;
-		return setTimeout((function() {
-	    	return imageSendingPaused = false;
-	    }), 100);
-	  });
+							console.log( 'taking off!' );
+							return _this.client.takeoff();
+						} else if( data.action == "land" ){
 
-  app.get("/image/:id", function(req, res) {
-    res.writeHead(200, {
-      "Content-Type": "image/png"
-    });
-    return res.end(currentImg, "binary");
-  }); */
+							console.log('landing');
+							return _this.client.land();
+						}
+					});					
+				}			
+			}
+		},
 
-  //petit souci pour les images, on a pas un path du coups chaud a metre dans une balise img classique a voir
-//img.src = 'data:image/jpeg;base64,' + btoa('your-binary-data');
+	run :
+		function(tab) {
+			this.configServer();
+			this.runServer();
+			this.createClient(tab);
+		}
+
+};
+
+var tab = new Array();
+tab.push( 'UpDown' ); //tab qui contient les channels qu'on veut ecouter.
+
+var datServ = new Serv( 8000 );
+datServ.run( tab );

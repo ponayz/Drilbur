@@ -1,32 +1,31 @@
-var fayeClient = new Faye.Client('/faye',{
-	timeout : 120
-});
 
-fayeClient.subscribe('/image', function(data) {
-	console.log(data.img);
-	//var src = 'data:image/png;base64,' + btoa(data.img);
-	//console.log(src);
-	//$('#video').attr("src",src )  //a test ... 
-});
+var client = {};
 
-/*fayeClient.subscribe("/drone/image", function(src) {
-	console.log(src);
-    return $("#video").attr({
-      src: src
-    });
-});*/
+client.fayeClient;
+client.canvas;
+client.c;
+client.width;
+client.height;
+client.frame;
+client.controller;
 
-var canvas = document.getElementById( 'canv' );
-var c =  canvas.getContext( '2d' );
-var width = canvas.width;
-var height = canvas.height;
-var frame;
+client.configFaye = function() {
+	this.fayeClient = new Faye.Client('/faye',{
+		timeout : 120
+	});
+	
+};
 
-var controller = new Leap.Controller({ enableGestures: true });
+client.configLeap = function() {
+	this.canvas = document.getElementById( 'canv' );
+	this.c = this.canvas.getContext( '2d' );
+	this.width = this.canvas.width;
+	this.height = this.canvas.height;
+	this.controller = new Leap.Controller({ enableGestures: true });
+};
 
-function leapToScene( leapPos ){
-
-	var iBox = frame.interactionBox;
+client.leapToScene = function( leapPos ) {
+	var iBox = this.frame.interactionBox;
 
 	var left = iBox.center[0] - iBox.size[0]/2;
 	var top = iBox.center[1] + iBox.size[1]/2;
@@ -37,16 +36,15 @@ function leapToScene( leapPos ){
 	x /= iBox.size[0];
 	y /= iBox.size[1];
 
-	x *= width;
-	y *= height;
+	x *= this.width;
+	y *= this.height;
 
 	return [ x , -y ];
+};
 
-}
+client.onCircle = function( gesture ) {
 
-function onCircle( gesture ){
-
-	var pos = leapToScene( gesture.center );
+	var pos = this.leapToScene( gesture.center );
 	var r = gesture.radius;
 	
 	var clockwise = false;
@@ -56,89 +54,105 @@ function onCircle( gesture ){
   	}
 
 	// Setting up the style for the stroke, and fill
-	c.fillStyle   = "#39AECF";
-	c.strokeStyle = "#FF5A40";
-	c.lineWidth   = 5;
+	this.c.fillStyle   = "#39AECF";
+	this.c.strokeStyle = "#FF5A40";
+	this.c.lineWidth   = 5;
 
 	// Creating the path for the finger circle
-	c.beginPath();
+	this.c.beginPath();
 
 	// Draw a full circle of radius 6 at the finger position
-	c.arc(pos[0], pos[1], r, 0, Math.PI*2); 
+	this.c.arc(pos[0], pos[1], r, 0, Math.PI*2); 
 
-	c.closePath();
+	this.c.closePath();
 
 	if( clockwise ){
-		c.stroke();
+		this.c.stroke();
 
-		return fayeClient.publish('/UpDown', {
-			action : "takeoff"
-		});
-			
+		action = {};
+		action.action = "takeoff";
+		channel = "/UpDown";			
 	}else{
-		c.fill();
+		this.c.fill();
 
-		return fayeClient.publish('/UpDown', {
-			action : "land"
-		});
+		action = {};
+		action.action = "land";
+		channel = "/UpDown";
 	}
-}
 
-function onSwipe( gesture ){
+	return this.postOnFaye( action, channel );
+};
 
-	var startPos = leapToScene( gesture.startPosition );
+client.postOnFaye = function( action, channel ) {	
+	return this.fayeClient.publish( channel+'' , action );
+};
 
-	var pos = leapToScene( gesture.position );
+
+client.onSwipe = function ( gesture ){
+
+	var startPos = this.leapToScene( gesture.startPosition );
+
+	var pos = this.leapToScene( gesture.position );
 
 	// Setting up the style for the stroke
-	c.strokeStyle = "#FFA040";
-	c.lineWidth = 3;
+	this.c.strokeStyle = "#FFA040";
+	this.c.lineWidth = 3;
 
 	// Drawing the path
-	c.beginPath();
+	this.c.beginPath();
 
 	// Move to the start position
-	c.moveTo( startPos[0] , startPos[1] );
+	this.c.moveTo( startPos[0] , startPos[1] );
 
 	// Draw a line to current position
-	c.lineTo( pos[0] , pos[1] );
+	this.c.lineTo( pos[0] , pos[1] );
 
-	c.closePath();
-	c.stroke();
-}
+	this.c.closePath();
+	this.c.stroke();
+};
 
-controller.on( 'frame' , function( data ){
+client.getFrame = function() {
+
+	var _this = this;
+	this.controller.on( 'frame' , function( data ){
   
-	frame = data;
+		_this.frame = data;
 
-	c.clearRect( 0 , 0 , width , height );
+		_this.c.clearRect( 0 , 0 , _this.width , _this.height );
 
-	for( var i =  0; i < frame.gestures.length; i++){
-		
-		var gesture  = frame.gestures[i];
-		var type = gesture.type;
-          
-		switch( type ){
+		for( var i =  0; i < _this.frame.gestures.length; i++){
+			
+			var gesture  = _this.frame.gestures[i];
+			var type = gesture.type;
+	          
+			switch( type ){
 
-			case "circle":
-				onCircle( gesture );
-				break;
-			  
-			case "swipe":
-				onSwipe( gesture );
-				break;
+				case "circle":
+					_this.onCircle( gesture );
+					break;
+				  
+				case "swipe":
+					_this.onSwipe( gesture );
+					break;
 
-			case "screenTap":
-				//onScreenTap( gesture );
-				break;
+				case "screenTap":
+					//onScreenTap( gesture );
+					break;
 
-			case "keyTap":
-				//onKeyTap( gesture );
-				break;
+				case "keyTap":
+					//onKeyTap( gesture );
+					break;
 
-  		}
+	  		}
+	    }
+	});
+};
 
-    }
-});
+client.run = function() {
+	this.configFaye();
+	this.configLeap();
+	this.controller.connect();
+	this.getFrame();
+};
 
-controller.connect();
+client.run();
