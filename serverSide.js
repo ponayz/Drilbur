@@ -48,24 +48,47 @@ Serv.prototype = {
 			
 			this.listener = new faye.Client( "http://localhost:" + this.portOf + "/faye" );
 
-			if( tab instanceof Array ){
+			var _this = this;
+					
+			this.listener.subscribe( '/UpDown', function( data ) {						
+				
+				if( data.action == "takeoff" ){	
 
-				if( tab.indexOf( 'UpDown' ) > -1 ){
-					var _this = this;
-					this.listener.subscribe( '/UpDown', function( data ) {						
-						
-						if( data.action == "takeoff" ){	
+					console.log( 'taking off!' );
+					return _this.client.takeoff();
+				} else if( data.action == "land" ){
 
-							console.log( 'taking off!' );
-							return _this.client.takeoff();
-						} else if( data.action == "land" ){
+					console.log('landing');
+					return _this.client.land();
+				}
+			});		
 
-							console.log('landing');
-							return _this.client.land();
-						}
-					});					
-				}			
-			}
+			this.listener.subscribe( '/LeftRight', function( data ) {						
+				
+				if( data.action == "right" ){
+
+					console.log( 'going right' );
+					return _this.client.right( data.speed );
+				} else if( data.action == "left" ){
+
+					console.log('going left');
+					return _this.client.left( data.speed );
+				}
+			});			
+
+			this.listener.subscribe( '/FrontBack', function( data ) {						
+				
+				if( data.action == "front" ){
+
+					console.log( 'going forward' );
+					return _this.client.front( data.speed );
+				} else if( data.action == "back" ){
+
+					console.log('going backward');
+					return _this.client.back( data.speed );
+				}
+			});			
+			
 		},
 
 	run :

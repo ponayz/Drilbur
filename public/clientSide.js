@@ -8,6 +8,8 @@ client.width;
 client.height;
 client.frame;
 client.controller;
+client.takingOff = 0;//to detect that the user really wants to land or take off
+client.landing = 0;
 
 client.configFaye = function() {
 	this.fayeClient = new Faye.Client('/faye',{
@@ -68,19 +70,39 @@ client.onCircle = function( gesture ) {
 
 	if( clockwise ){
 		this.c.stroke();
-
-		action = {};
-		action.action = "takeoff";
-		channel = "/UpDown";			
+		
+		if( this.takingOff >= 3 ){
+			console.log("takeoff");
+			this.takingOff = 0;
+			
+			var action = {};
+			action.action = "takeoff";
+			var channel = "/UpDown";	
+					
+			return this.postOnFaye( action, channel );
+		}else{
+			this.takingOff++;
+			return;
+		}
+	
 	}else{
 		this.c.fill();
 
-		action = {};
-		action.action = "land";
-		channel = "/UpDown";
+		if( this.landing >= 3 ){
+			console.log("land");
+			this.landing = 0;
+
+			var action = {};
+			action.action = "land";
+			var channel = "/UpDown";
+			return this.postOnFaye( action, channel );
+		}
+		else{
+			this.landing++;
+			return;
+		}
 	}
 
-	return this.postOnFaye( action, channel );
 };
 
 client.postOnFaye = function( action, channel ) {	
@@ -120,7 +142,7 @@ client.getFrame = function() {
 
 		_this.c.clearRect( 0 , 0 , _this.width , _this.height );
 
-		for( var i =  0; i < _this.frame.gestures.length; i++){
+		for( var i =  0; i < _this.frame.gestures.length; i++ ){
 			
 			var gesture  = _this.frame.gestures[i];
 			var type = gesture.type;
@@ -134,18 +156,50 @@ client.getFrame = function() {
 				case "swipe":
 					_this.onSwipe( gesture );
 					break;
-
-				case "screenTap":
-					//onScreenTap( gesture );
-					break;
-
-				case "keyTap":
-					//onKeyTap( gesture );
-					break;
-
 	  		}
-	    }
+	  	}
+
+  		if( _this.frame.hands.length >= 1 ){
+  			var firstHand = _this.frame.hands[0];
+  			var shakingMvt = 0.30;
+
+  			if( firstHand.palmNormal[0] > shakingMvt ){
+  				//going left
+  				_this.flyThisWay( 'left', firstHand.palmNormal[0]+shakingMvt );
+  				//add the shaking thing so we have a speed between 0 and 1 
+  				//because the drone api take a speed in this range.
+  				
+  			}else if( firstHand.palmNormal[0] < -shakingMvt ){
+  				//going right
+  				_this.flyThisWay( 'right', firstHand.palmNormal[0]+shakingMvt );
+  				
+  			}
+
+  			if( firstHand.palmNormal[2] > shakingMvt ){
+  			 	//going forward
+  				_this.flyThisWay( 'front', firstHand.palmNormal[2]+shakingMvt );
+  				
+	        }else if( firstHand.palmNormal[2] < -shakingMvt ){
+	        	//going backward
+  				_this.flyThisWay( 'back', firstHand.palmNormal[2]+shakingMvt );
+  			}	    
+		}
 	});
+};
+
+client.flyThisWay = function(direction,speed) {
+
+	var action = {};
+	action.speed = speed;
+	action.action = direction;
+	if( direction.indexOf( 'right' ) > -1 || direction.indexOf( 'left' ) > -1  )
+		var channel =  '/LeftRight';
+	else if ( direction.indexOf( 'back' ) > -1 || direction.indexOf( 'front' ) > -1)
+		var channel = '/FrontBack';
+
+	if(channel)
+		return this.postOnFaye( action, channel );
+	return;
 };
 
 client.run = function() {
