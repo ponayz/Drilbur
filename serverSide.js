@@ -5,8 +5,9 @@ var path = require( 'path' );
 var arDrone = require( 'ar-drone' );
 var http = require( 'http' );
 var stream = require( 'dronestream' );
+var util = require( 'util' );
 
-var Serv = function(port) {
+var Serv = function( port ) {
 
 	this.app = express();
 	this.client;
@@ -49,7 +50,17 @@ Serv.prototype = {
 			this.listener = new faye.Client( "http://localhost:" + this.portOf + "/faye" );
 
 			var _this = this;
-					
+
+			this.listener.subscribe( '/Fly', function( data ) {
+				//util.log(data.action);
+				if( typeof _this.client[ data.action ] == 'function'){
+					console.log( 'flying : ' + data.action + " speed :" + data.speed);
+					return _this.client[ data.action ]( data.speed );
+				}else{ 
+					return _this.client.stop();
+				}
+			});
+				
 			this.listener.subscribe( '/UpDown', function( data ) {						
 				
 				if( data.action == "takeoff" ){	
@@ -61,34 +72,39 @@ Serv.prototype = {
 					console.log('landing');
 					return _this.client.land();
 				}
-			});		
+			});	
 
+			this.client.on('navdata', function( data ) {
+    			return _this.listener.publish( "/navdata", data );
+  			});	
+			/*
 			this.listener.subscribe( '/LeftRight', function( data ) {						
 				
 				if( data.action == "right" ){
 
 					console.log( 'going right' );
-					return _this.client.right( data.speed );
+					return _this.client.right( 0.2 );
 				} else if( data.action == "left" ){
 
 					console.log('going left');
-					return _this.client.left( data.speed );
+					return _this.client.left( 0.2 );
 				}
-			});			
+			});		
 
 			this.listener.subscribe( '/FrontBack', function( data ) {						
 				
 				if( data.action == "front" ){
 
 					console.log( 'going forward' );
-					return _this.client.front( data.speed );
+					_this.client.stop();
+					return _this.client.front( 0.2 );
 				} else if( data.action == "back" ){
 
 					console.log('going backward');
-					return _this.client.back( data.speed );
+					_this.client.stop();
+					return _this.client.back( 0.2 );
 				}
-			});			
-			
+			}); */		
 		},
 
 	run :

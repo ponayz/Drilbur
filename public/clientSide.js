@@ -2,27 +2,21 @@
 var client = {};
 
 client.fayeClient;
-client.canvas;
-client.c;
 client.width;
 client.height;
 client.frame;
 client.controller;
-client.takingOff = 0;//to detect that the user really wants to land or take off
+client.takingOff = 0;//to detect weather or not the user really wants to land or take off
 client.landing = 0;
 
 client.configFaye = function() {
 	this.fayeClient = new Faye.Client('/faye',{
 		timeout : 120
-	});
-	
+	});	
 };
 
 client.configLeap = function() {
-	this.canvas = document.getElementById( 'canv' );
-	this.c = this.canvas.getContext( '2d' );
-	this.width = this.canvas.width;
-	this.height = this.canvas.height;
+	
 	this.controller = new Leap.Controller({ enableGestures: true });
 };
 
@@ -55,23 +49,9 @@ client.onCircle = function( gesture ) {
     	clockwise = true;
   	}
 
-	// Setting up the style for the stroke, and fill
-	this.c.fillStyle   = "#39AECF";
-	this.c.strokeStyle = "#FF5A40";
-	this.c.lineWidth   = 5;
-
-	// Creating the path for the finger circle
-	this.c.beginPath();
-
-	// Draw a full circle of radius 6 at the finger position
-	this.c.arc(pos[0], pos[1], r, 0, Math.PI*2); 
-
-	this.c.closePath();
-
 	if( clockwise ){
-		this.c.stroke();
 		
-		if( this.takingOff >= 3 ){
+		if( this.takingOff >= 5 ){
 			console.log("takeoff");
 			this.takingOff = 0;
 			
@@ -86,10 +66,9 @@ client.onCircle = function( gesture ) {
 		}
 	
 	}else{
-		this.c.fill();
-
-		if( this.landing >= 3 ){
-			console.log("land");
+		
+		if( this.landing >= 5 ){
+			console.log( "land" );
 			this.landing = 0;
 
 			var action = {};
@@ -109,38 +88,12 @@ client.postOnFaye = function( action, channel ) {
 	return this.fayeClient.publish( channel+'' , action );
 };
 
-
-client.onSwipe = function ( gesture ){
-
-	var startPos = this.leapToScene( gesture.startPosition );
-
-	var pos = this.leapToScene( gesture.position );
-
-	// Setting up the style for the stroke
-	this.c.strokeStyle = "#FFA040";
-	this.c.lineWidth = 3;
-
-	// Drawing the path
-	this.c.beginPath();
-
-	// Move to the start position
-	this.c.moveTo( startPos[0] , startPos[1] );
-
-	// Draw a line to current position
-	this.c.lineTo( pos[0] , pos[1] );
-
-	this.c.closePath();
-	this.c.stroke();
-};
-
 client.getFrame = function() {
 
 	var _this = this;
 	this.controller.on( 'frame' , function( data ){
   
 		_this.frame = data;
-
-		_this.c.clearRect( 0 , 0 , _this.width , _this.height );
 
 		for( var i =  0; i < _this.frame.gestures.length; i++ ){
 			
@@ -162,49 +115,102 @@ client.getFrame = function() {
   		if( _this.frame.hands.length >= 1 ){
   			var firstHand = _this.frame.hands[0];
   			var shakingMvt = 0.30;
+  			var shakingFront = 0.40;
 
   			if( firstHand.palmNormal[0] > shakingMvt ){
   				//going left
-  				_this.flyThisWay( 'left', firstHand.palmNormal[0]+shakingMvt );
+  				document.getElementById('leftRight').innerHTML = 'left';
+  				return _this.flyThisWay( 'left', firstHand.palmNormal[0] );
   				//add the shaking thing so we have a speed between 0 and 1 
   				//because the drone api take a speed in this range.
-  				
   			}else if( firstHand.palmNormal[0] < -shakingMvt ){
   				//going right
-  				_this.flyThisWay( 'right', firstHand.palmNormal[0]+shakingMvt );
+  				document.getElementById('leftRight').innerHTML = 'right';
+  				return _this.flyThisWay( 'right', -firstHand.palmNormal[0] );
   				
   			}
 
-  			if( firstHand.palmNormal[2] > shakingMvt ){
+  			if( firstHand.palmNormal[2] > shakingFront ){
   			 	//going forward
-  				_this.flyThisWay( 'front', firstHand.palmNormal[2]+shakingMvt );
+  				document.getElementById('frontBack').innerHTML = 'front';  			 	
+  				return _this.flyThisWay( 'front', firstHand.palmNormal[2] );
   				
-	        }else if( firstHand.palmNormal[2] < -shakingMvt ){
+	        }else if( firstHand.palmNormal[2] < -shakingFront ){
 	        	//going backward
-  				_this.flyThisWay( 'back', firstHand.palmNormal[2]+shakingMvt );
-  			}	    
+  				document.getElementById('frontBack').innerHTML = 'back';  			 	
+  				return _this.flyThisWay( 'back', -firstHand.palmNormal[2] );
+  			}
+
+  			document.getElementById('frontBack').innerHTML = 'stable'; 
+  			document.getElementById('leftRight').innerHTML = 'stable'; 
+  			return _this.flyThisWay( 'stable' );
+  				  
+
+  			/*if( firstHand.translation( _this.controller.frame( 50 ) )[1] > 100 ){
+  				//going up
+  				//@TODO CALCULATE SPEED! 
+  				_this.flyThisWay( 'up', 0.3 );
+
+  			}else if( firstHand.translation( _this.controller.frame( 50 ) )[1] < -100 ){
+  				//going down
+  				//@TODO CALCULATE SPEED! 
+  				_this.flyThisWay( 'down', 0.3 );
+
+  			}else{
+  				//staying like a boss
+  				_this.flyThisWay( 'stable', 0 );
+  			}*/
+  			/*var moy = 0;
+  			
+  			for (var i = 0; i < 50; i++) {
+  				moy += firstHand.translation( _this.controller.frame( i ) )[1];	
+  			}
+
+  			moy /= 50;
+  			
+  			if ( moy > 100 ){
+  				document.getElementById('upDown').innerHTML = 'up';
+  				_this.flyThisWay( 'up', 0.3 );
+  			}else if( moy < -100 ){
+  				document.getElementById('upDown').innerHTML = 'Down';
+  				_this.flyThisWay( 'down', 0.3);
+  			}else{
+  				document.getElementById('upDown').innerHTML = 'stable';
+  				_this.flyThisWay( 'stable', 0 );
+  			}*/
 		}
 	});
 };
 
 client.flyThisWay = function(direction,speed) {
 
-	var action = {};
-	action.speed = speed;
-	action.action = direction;
-	if( direction.indexOf( 'right' ) > -1 || direction.indexOf( 'left' ) > -1  )
-		var channel =  '/LeftRight';
-	else if ( direction.indexOf( 'back' ) > -1 || direction.indexOf( 'front' ) > -1)
-		var channel = '/FrontBack';
-
-	if(channel)
+	if( direction ){
+		var action = {};
+		var channel = '/Fly';
+		action.speed = speed;
+		action.action = direction;
 		return this.postOnFaye( action, channel );
+	}
 	return;
+};
+
+client.navdataRead = function() {
+	
+	this.fayeClient.subscribe( '/navdata' , this.showData );
+
+};
+
+client.showData =  function( data ) {
+
+	//console.log( data );
+	document.getElementById('Battery').innerHTML =  data.demo.batteryPercentage;
+
 };
 
 client.run = function() {
 	this.configFaye();
 	this.configLeap();
+	this.navdataRead();
 	this.controller.connect();
 	this.getFrame();
 };
