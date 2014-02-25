@@ -1,3 +1,9 @@
+/*
+**package definition 
+**Express, path, http : build the server.
+**ar-drone, dronestream : interact with the drone.
+**faye : dialog faster with client.
+*/
 
 var express = require( 'express' );
 var faye = require( 'faye' );
@@ -7,6 +13,13 @@ var http = require( 'http' );
 var stream = require( 'dronestream' );
 var util = require( 'util' );
 
+/*
+**initialize the variables : 
+**app : to configure the server.
+**client : for the drone.
+**listener : to interact listen to the signal emited by the client(s).
+**portOf : to configure the port of the localhost we're attaching the server.
+*/
 var Serv = function( port ) {
 
 	this.app = express();
@@ -17,6 +30,9 @@ var Serv = function( port ) {
 
 Serv.prototype = {
 
+	/*
+	**configuration of the server and his components.
+	*/
 	configServer : 
 		function() {
 			var _this = this;
@@ -28,6 +44,11 @@ Serv.prototype = {
 			} );
 		},
 
+	/*
+	**configuring the package that handle the video,
+	**the faye package, and attaching both on the server.
+	**run the server as well.
+	*/
 	runServer :
 		function() {
 			
@@ -43,8 +64,16 @@ Serv.prototype = {
 			toListen.listen( this.portOf );
 		},
 
+	/*
+	**creating the client that will talks to the ar-drone.
+	**creating channel to get the event sent by the server's client.
+	**Fly : to get all the basics mouvement such as going forward, backward...
+	**UpDown : handle the takeoff and land procedure.
+	**navdata : this time the server send to the client the navigation data that the 
+	**			drone send to the server.
+	*/
 	createClient:
-		function(tab) {
+		function() {
 			this.client = arDrone.createClient();
 			
 			this.listener = new faye.Client( "http://localhost:" + this.portOf + "/faye" );
@@ -52,7 +81,6 @@ Serv.prototype = {
 			var _this = this;
 
 			this.listener.subscribe( '/Fly', function( data ) {
-				//util.log(data.action);
 				if( typeof _this.client[ data.action ] == 'function'){
 					console.log( 'flying : ' + data.action + " speed :" + data.speed);
 					return _this.client[ data.action ]( data.speed );
@@ -76,48 +104,20 @@ Serv.prototype = {
 
 			this.client.on('navdata', function( data ) {
     			return _this.listener.publish( "/navdata", data );
-  			});	
-			/*
-			this.listener.subscribe( '/LeftRight', function( data ) {						
-				
-				if( data.action == "right" ){
-
-					console.log( 'going right' );
-					return _this.client.right( 0.2 );
-				} else if( data.action == "left" ){
-
-					console.log('going left');
-					return _this.client.left( 0.2 );
-				}
-			});		
-
-			this.listener.subscribe( '/FrontBack', function( data ) {						
-				
-				if( data.action == "front" ){
-
-					console.log( 'going forward' );
-					_this.client.stop();
-					return _this.client.front( 0.2 );
-				} else if( data.action == "back" ){
-
-					console.log('going backward');
-					_this.client.stop();
-					return _this.client.back( 0.2 );
-				}
-			}); */		
+  			});			
 		},
 
+	/*
+	**function that call everything. 
+	*/
 	run :
-		function(tab) {
+		function() {
 			this.configServer();
 			this.runServer();
-			this.createClient(tab);
+			this.createClient();
 		}
 
 };
 
-var tab = new Array();
-tab.push( 'UpDown' ); //tab qui contient les channels qu'on veut ecouter.
-
-var datServ = new Serv( 8000 );
-datServ.run( tab );
+//launch the serv.
+var datServ = new Serv( 8000 ).run();

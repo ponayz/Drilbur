@@ -9,6 +9,7 @@
     <strong>Direction (Monter/Decendre) du drone:</strong> <span id="upDown"></span><br />
     <strong>Direction (Avant/arrière) du drone:</strong> <span id="frontBack"></span><br />
     <strong>Direction (Gauche/Droite) du drone:</strong> <span id="leftRight"></span><br />
+    <strong>Direction stabilized :</strong> <span id="stab"></span><br />
     <strong>Batterie du drone:</strong> <span id="Battery"></span><br />
 	<!--<img style = "width: 500px; height: 500px; " src="Img/drilbur.png"> <br />-->
 	<!--<canvas id="canv" style ="width:500px;height:500px;"></canvas>-->
@@ -16,7 +17,7 @@
 	<script src="/dronestream/nodecopter-client.js"></script>
 	<script>
   		// video canvas will auto-size to the DOM-node, or default to 640*360 if no size is set.
-		new NodecopterStream(document.getElementById("droneStream"));
+		//new NodecopterStream(document.getElementById("droneStream"));
 	</script>
 	<script src="/faye/client.js"></script>
 	<script src="leap.js"></script>
