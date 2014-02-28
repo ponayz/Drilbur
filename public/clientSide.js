@@ -1,3 +1,9 @@
+/**
+**TO CALIBRATE :
+** shakingMvt
+** variable du filtre passe bas de décolage et atterissage
+** nombre de frame et la valeur de la translation pour le up et down
+**/
 
 var client = {};
 
@@ -14,8 +20,8 @@ var client = {};
 client.fayeClient;
 client.frame;
 client.controller;
-client.takingOff = 0;
-client.landing = 0;
+client.takingOff = 1;
+client.landing = 1;
 client.shakingMvt = 0;
 client.isFlying = false;
 
@@ -56,7 +62,7 @@ client.onCircle = function( gesture ) {
 	if( clockwise ){
 		
 		if( this.takingOff % 10 && !this.isFlying ){
-			this.takingOff = 0;
+			this.takingOff = 1;
 			this.isFlying = true;
 			
 			var action = {};
@@ -71,9 +77,9 @@ client.onCircle = function( gesture ) {
 	
 	}else{
 		
-		if( this.landing % 10 && this.isFlying ){
-			this.landing = 0;
+		if( this.landing % 10 == 0 && this.isFlying ){
 			this.isFlying = false;
+			this.landing = 1;
 
 			var action = {};
 			action.action = "land";
@@ -158,7 +164,7 @@ client.forwardBackward = function() {
 **/
 client.upDown = function() {
 	
-	if( this.isFlying && this.frame.hands.length >= 1 ){
+	/*if( this.isFlying && this.frame.hands.length >= 1 ){
 		
 		var firstHand = this.frame.hands[0];
 		var normalize = firstHand.palmPosition[1]/600; //normalize the position
@@ -177,6 +183,52 @@ client.upDown = function() {
 		}else{
 			//retrun false cause we're stable..
 			document.getElementById('upDown').innerHTML = 'stable';
+			return false;
+		}
+	}
+
+	return false;*/
+
+
+	/*if( this.isFlying && this.frame.hands.length >=1 ){
+		var firstHand = this.frame.hands[0];
+		var velocity = firstHand.palmVelocity[1];
+		var speed = 0.6;
+		if( velocity >= 250 ){
+			//going up 
+			document.getElementById('upDown').innerHTML = 'up';
+			return this.flyThisWay( 'up', speed );
+		}else if( velocity <= -250 ){
+			//going down
+			document.getElementById('upDown').innerHTML = 'down';
+			return this.flyThisWay( 'down', speed );
+		}else{
+			document.getElementById('upDown').innerHTML = 'stable';
+			return false;
+		}
+	}
+		hand1.translation( controller.frame(20) )[1]  < -65
+
+	return false;*/
+
+	if( this.isFlying && this.frame.hands.length >=1 ){
+
+		var firstHand = this.frame.hands[0];
+		var previousFrame = this.controller.frame(20);
+		var translationVector = firstHand.translation( previousFrame ); 
+		//@TODO : calculate speed
+		var speed = 0.6; 
+
+		if( translationVector[1] > 80 ){
+			//going up
+			document.getElementById('upDown').innerHTML = "up";
+			return this.flyThisWay( 'up', speed );
+		}else if( translationVector[1] < -80){
+			//going down
+			document.getElementById('upDown').innerHTML = "down";
+			return this.flyThisWay( 'down', speed );
+		}else{
+			document.getElementById('upDown').innerHTML = "stable";
 			return false;
 		}
 	}
@@ -214,11 +266,13 @@ client.getFrame = function() {
 					return _this.flyThisWay( 'stable' );
 				}
 			}
+
 		} else if( _this.isFlying == true ) {
+			_this.isFlying = false;
 			var action = {};
 			action.action = "land";
 			var channel = "/UpDown";
-			_this.postOnFaye( action, channel );	
+			return _this.postOnFaye( action, channel );	
 		}
 
 	});
@@ -261,7 +315,7 @@ client.showData =  function( data ) {
 client.run = function() {
 	this.configFaye();
 	this.configLeap();
-	new NodecopterStream(document.getElementById("droneStream"));
+	//new NodecopterStream(document.getElementById("droneStream"));
 	this.navdataRead();
 	this.controller.connect();
 	this.getFrame();
