@@ -4,6 +4,7 @@
 ** variable du filtre passe bas de décolage et atterissage
 ** nombre de frame et la valeur de la translation pour le up et down
 **/
+//@todo decollage atterisage
 
 var client = {};
 
@@ -20,10 +21,11 @@ var client = {};
 client.fayeClient;
 client.frame;
 client.controller;
-client.takingOff = 1;
-client.landing = 1;
+client.turnClock = 1;
+client.turnCounterClock = 1;
 client.shakingMvt = 0;
 client.isFlying = false;
+client.altitude;
 
 /**
 **configure faye on client side timeout at 120ms
@@ -61,8 +63,7 @@ client.onCircle = function( gesture ) {
 
 	if( clockwise ){
 		
-		if( this.takingOff % 10 && !this.isFlying ){
-			this.takingOff = 1;
+		if( !this.isFlying ){
 			this.isFlying = true;
 			
 			var action = {};
@@ -70,24 +71,33 @@ client.onCircle = function( gesture ) {
 			var channel = "/UpDown";	
 					
 			return this.postOnFaye( action, channel );
+		}else if( this.isFlying && this.turnClock % 10 == 0  ){
+			this.turnClock = 1;
+			return this.flyThisWay( 'clockwise', 0.5 );
+
 		}else{
-			this.takingOff++;
+			this.turnClock++;
 			return;
 		}
 	
 	}else{
 		
-		if( this.landing % 10 == 0 && this.isFlying ){
-			this.isFlying = false;
+		if( this.turnCounterClock % 10 == 0 && this.isFlying ){
+	
+			this.turnCounterClock = 1;
+
+			return this.flyThisWay( 'counterClockwise', 0.5 );
+
+			/*this.isFlying = false;
 			this.landing = 1;
 
 			var action = {};
 			action.action = "land";
 			var channel = "/UpDown";
-			return this.postOnFaye( action, channel );
+			return this.postOnFaye( action, channel );*/
 		}
 		else{
-			this.landing++;
+			this.turnCounterClock++;
 			return;
 		}
 	}
@@ -164,76 +174,50 @@ client.forwardBackward = function() {
 **/
 client.upDown = function() {
 	
-	/*if( this.isFlying && this.frame.hands.length >= 1 ){
+	if( this.isFlying && this.frame.hands.length >= 1 ){
 		
 		var firstHand = this.frame.hands[0];
 		var normalize = firstHand.palmPosition[1]/600; //normalize the position
-		var speed = Math.abs( 0.5 - normalize ); //calculate the speed between 0 and 0.5 
-
-		if( normalize >= 0.6 ){
-			//going up
-			document.getElementById('upDown').innerHTML = 'up';
-			return this.flyThisWay( 'up', speed );
-
-		}else if( normalize <= 0.4 ){
-			//going down
-			document.getElementById('upDown').innerHTML = 'down';
-			return this.flyThisWay( 'down', speed );
-		
-		}else{
-			//retrun false cause we're stable..
-			document.getElementById('upDown').innerHTML = 'stable';
-			return false;
-		}
-	}
-
-	return false;*/
-
-
-	/*if( this.isFlying && this.frame.hands.length >=1 ){
-		var firstHand = this.frame.hands[0];
+		var speed = Math.abs( 0.5 - normalize ) + 0.5; //calculate the speed between 0 and 0.9
 		var velocity = firstHand.palmVelocity[1];
-		var speed = 0.6;
-		if( velocity >= 250 ){
-			//going up 
+		var topFlying = 0.6;
+		var botFlying = 0.4;
+		var stepVelocity = 200;
+
+		speed = speed > 1 ? 0.9 : speed;
+
+
+		if( normalize >= topFlying || velocity >= stepVelocity ){
+			//going up
 			document.getElementById('upDown').innerHTML = 'up';
 			return this.flyThisWay( 'up', speed );
-		}else if( velocity <= -250 ){
+
+		}else if( normalize <= botFlying || velocity <= -stepVelocity ){
 			//going down
 			document.getElementById('upDown').innerHTML = 'down';
+
+			/**
+			**A TESTER 
+			**/
+			if( this.altitude <= 0.1 ){
+				this.isFlying = false;
+				var action = {};
+				action.action = "land";
+				var channel = "/UpDown";
+				this.flyThisWay( 'stable' );
+				return this.postOnFaye( action, channel );
+			}
+
 			return this.flyThisWay( 'down', speed );
 		}else{
+			//stable
 			document.getElementById('upDown').innerHTML = 'stable';
-			return false;
-		}
-	}
-		hand1.translation( controller.frame(20) )[1]  < -65
-
-	return false;*/
-
-	if( this.isFlying && this.frame.hands.length >=1 ){
-
-		var firstHand = this.frame.hands[0];
-		var previousFrame = this.controller.frame(20);
-		var translationVector = firstHand.translation( previousFrame ); 
-		//@TODO : calculate speed
-		var speed = 0.6; 
-
-		if( translationVector[1] > 80 ){
-			//going up
-			document.getElementById('upDown').innerHTML = "up";
-			return this.flyThisWay( 'up', speed );
-		}else if( translationVector[1] < -80){
-			//going down
-			document.getElementById('upDown').innerHTML = "down";
-			return this.flyThisWay( 'down', speed );
-		}else{
-			document.getElementById('upDown').innerHTML = "stable";
 			return false;
 		}
 	}
 
 	return false;
+
 };
 
 /**
@@ -257,7 +241,7 @@ client.getFrame = function() {
 				}
 			}
 
-			if( _this.isFlying ){
+			if( _this.isFlying
 
 				if( _this.upDown() != false || _this.forwardBackward() != false || _this.leftRight() != false ){
 					document.getElementById('stab').innerHTML = 'MOVE!';
@@ -272,6 +256,7 @@ client.getFrame = function() {
 			var action = {};
 			action.action = "land";
 			var channel = "/UpDown";
+			_this.flyThisWay( 'stable' );
 			return _this.postOnFaye( action, channel );	
 		}
 
@@ -307,6 +292,7 @@ client.showData =  function( data ) {
 
 	//console.log( data );
 	document.getElementById('Battery').innerHTML =  data.demo.batteryPercentage;
+
 };
 
 /**
@@ -328,6 +314,8 @@ $( document ).keydown( function( ev ) {
 		var action = {};
 		action.action = "land";
 		var channel = "/UpDown";
+		client.isFlying = false;
+		client.flyThisWay( 'stable' );
 		client.postOnFaye( action, channel );
 	}
 });
