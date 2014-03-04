@@ -292,6 +292,7 @@ client.showData =  function( data ) {
 	document.getElementById('Battery').innerHTML =  data.demo.batteryPercentage;
 	
 	if( data.droneState.emergencyLanding == 1 ){
+		this.isFlying = false; 
 		document.getElementById('emergency').innerHTML = '<strong> Drone choqué, appuillez sur entrée pour le retablir </strong>'; 
 	}else{
 		document.getElementById('emergency').innerHTML = ''; 
