@@ -25,7 +25,8 @@ client.turnClock = 1;
 client.turnCounterClock = 1;
 client.shakingMvt = 0;
 client.isFlying = false;
-client.altitude = 0.2;
+client.altitude = 0;
+client.emergency;
 
 /**
 **configure faye on client side timeout at 120ms
@@ -289,6 +290,13 @@ client.showData =  function( data ) {
 	//console.log( data );
 	var _this = this;
 	document.getElementById('Battery').innerHTML =  data.demo.batteryPercentage;
+	
+	if( data.droneState.emergencyLanding == 1 ){
+		document.getElementById('emergency').innerHTML = '<strong> Drone choqué, appuillez sur entrée pour le retablir </strong>'; 
+	}else{
+		document.getElementById('emergency').innerHTML = ''; 
+	}
+
 	setTimeout( function () { _this.altitude = data.demo.altitude; }, 200 ); 
 	document.getElementById('height').innerHTML =  data.demo.altitude;
 
