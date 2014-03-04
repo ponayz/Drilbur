@@ -25,7 +25,7 @@ client.turnClock = 1;
 client.turnCounterClock = 1;
 client.shakingMvt = 0;
 client.isFlying = false;
-client.altitude;
+client.altitude = 0.2;
 
 /**
 **configure faye on client side timeout at 120ms
@@ -64,14 +64,13 @@ client.onCircle = function( gesture ) {
 	if( clockwise ){
 		
 		if( !this.isFlying ){
-			this.isFlying = true;
-			
-			var action = {};
-			action.action = "takeoff";
-			var channel = "/UpDown";	
-					
-			return this.postOnFaye( action, channel );
+			var _this = this;
+			setTimeout( function () {_this.isFlying = true;} , 1500); //A TEST
+
+			return this.postOnFaye( { action : 'takeoff' }, '/UpDown' );
+
 		}else if( this.isFlying && this.turnClock % 10 == 0  ){
+			
 			this.turnClock = 1;
 			return this.flyThisWay( 'clockwise', 0.5 );
 
@@ -199,16 +198,13 @@ client.upDown = function() {
 			/**
 			**A TESTER 
 			**/
-			if( this.altitude <= 0.1 ){
+			if( this.altitude <= 0.15 ){
 				this.isFlying = false;
-				var action = {};
-				action.action = "land";
-				var channel = "/UpDown";
-				this.flyThisWay( 'stable' );
-				return this.postOnFaye( action, channel );
+				this.postOnFaye( { action : 'stop' }, '/UpDown' );
+				return this.postOnFaye( { action : 'land' }, 'UpDown' );
 			}
-
 			return this.flyThisWay( 'down', speed );
+
 		}else{
 			//stable
 			document.getElementById('upDown').innerHTML = 'stable';
@@ -241,13 +237,13 @@ client.getFrame = function() {
 				}
 			}
 
-			if( _this.isFlying
+			if( _this.isFlying ){
 
 				if( _this.upDown() != false || _this.forwardBackward() != false || _this.leftRight() != false ){
 					document.getElementById('stab').innerHTML = 'MOVE!';
 				}else{
-					document.getElementById('stab').innerHTML = 'STABLE!';			
-					return _this.flyThisWay( 'stable' );
+					document.getElementById('stab').innerHTML = 'STABLE!';	
+					return _this.postOnFaye( { action : 'stop' }, '/UpDown' );
 				}
 			}
 
@@ -256,7 +252,7 @@ client.getFrame = function() {
 			var action = {};
 			action.action = "land";
 			var channel = "/UpDown";
-			_this.flyThisWay( 'stable' );
+			_this.postOnFaye( { action : 'stop' }, '/UpDown' );
 			return _this.postOnFaye( action, channel );	
 		}
 
@@ -291,7 +287,11 @@ client.navdataRead = function() {
 client.showData =  function( data ) {
 
 	//console.log( data );
+	var _this = this;
 	document.getElementById('Battery').innerHTML =  data.demo.batteryPercentage;
+	setTimeout( function () { _this.altitude = data.demo.altitude; }, 200 ); 
+	document.getElementById('height').innerHTML =  data.demo.altitude;
+
 
 };
 
@@ -301,7 +301,7 @@ client.showData =  function( data ) {
 client.run = function() {
 	this.configFaye();
 	this.configLeap();
-	//new NodecopterStream(document.getElementById("droneStream"));
+	new NodecopterStream(document.getElementById("droneStream"));
 	this.navdataRead();
 	this.controller.connect();
 	this.getFrame();
@@ -311,12 +311,12 @@ client.run = function() {
 $( document ).keydown( function( ev ) {
 	if( ev.keyCode == 32 ){
 		console.log("Landing triggered by keyboard");
-		var action = {};
-		action.action = "land";
-		var channel = "/UpDown";
 		client.isFlying = false;
-		client.flyThisWay( 'stable' );
-		client.postOnFaye( action, channel );
+		client.postOnFaye( { action : 'stop' }, '/UpDown' );
+		client.postOnFaye( { action : 'land' }, '/UpDown' );
+	}else if( ev.keyCode == 13 ){
+		console.log( "Recovering" ); 
+		client.postOnFaye( { action : 'disableEmergency' }, '/UpDown' );
 	}
 });
 

@@ -89,17 +89,12 @@ Serv.prototype = {
 				}
 			});
 				
-			this.listener.subscribe( '/UpDown', function( data ) {						
-				
-				if( data.action == "takeoff" ){	
+			this.listener.subscribe( '/UpDown', function( data ) {
 
-					console.log( 'taking off!' );
-					return _this.client.takeoff();
-				} else if( data.action == "land" ){
-
-					console.log('landing');
-					return _this.client.land();
-				}
+				if( typeof _this.client[ data.action ] == 'function' ){
+					console.log( data.action + '' );
+					return _this.client[ data.action ]();
+				}						
 			});	
 
 			this.client.on('navdata', function( data ) {
