@@ -97,6 +97,14 @@ Serv.prototype = {
 				}						
 			});	
 
+			this.listener.subscribe( '/animate', function( data ){
+
+				if( typeof _this.client[ data.action ] == 'function' ){
+					console.log( 'figue : ' + data.action );
+					return _this.client.animate( data.action, data.duration );
+				}
+			});
+
 			this.client.on('navdata', function( data ) {
     			return _this.listener.publish( "/navdata", data );
   			});			

@@ -18,6 +18,7 @@ var client = {};
 **isFlying : boolean that allow us to know if the drone flys or not
 **@TODO : remove the isFLying var and use the navdata instead 
 **/
+
 client.fayeClient;
 client.frame;
 client.controller;
@@ -66,7 +67,7 @@ client.onCircle = function( gesture ) {
 		
 		if( !this.isFlying ){
 			var _this = this;
-			setTimeout( function () {_this.isFlying = true;} , 1500); //A TEST
+			setTimeout( function () {_this.isFlying = true;} , 1500); 
 
 			return this.postOnFaye( { action : 'takeoff' }, '/UpDown' );
 
@@ -87,14 +88,6 @@ client.onCircle = function( gesture ) {
 			this.turnCounterClock = 1;
 
 			return this.flyThisWay( 'counterClockwise', 0.5 );
-
-			/*this.isFlying = false;
-			this.landing = 1;
-
-			var action = {};
-			action.action = "land";
-			var channel = "/UpDown";
-			return this.postOnFaye( action, channel );*/
 		}
 		else{
 			this.turnCounterClock++;
@@ -125,13 +118,13 @@ client.leftRight = function() {
 		
 		if( firstHand.palmNormal[0] > this.shakingMvt ){
 			//going left
-			document.getElementById('leftRight').innerHTML = 'left';
+			document.getElementById('leftRight').innerHTML = 'Gauche';
 			return this.flyThisWay( 'left', firstHand.palmNormal[0] );
 			//add the shaking thing so we have a speed between 0 and 1 
 			//because the drone api take a speed in this range.
 		}else if( firstHand.palmNormal[0] < -this.shakingMvt ){
 			//going right
-			document.getElementById('leftRight').innerHTML = 'right';
+			document.getElementById('leftRight').innerHTML = 'Droite';
 			return this.flyThisWay( 'right', -firstHand.palmNormal[0] );		
 		}else{
 			document.getElementById('leftRight').innerHTML = 'stable';
@@ -153,12 +146,12 @@ client.forwardBackward = function() {
 
 		if( firstHand.palmNormal[2] > this.shakingMvt ){
 		 	//going forward
-			document.getElementById('frontBack').innerHTML = 'front';  			 	
+			document.getElementById('frontBack').innerHTML = 'Avance';  			 	
 			return this.flyThisWay( 'front', firstHand.palmNormal[2] );
 			
 		}else if( firstHand.palmNormal[2] < -this.shakingMvt ){
 			//going backward
-			document.getElementById('frontBack').innerHTML = 'back';  			 	
+			document.getElementById('frontBack').innerHTML = 'Recule';  			 	
 			return this.flyThisWay( 'back', -firstHand.palmNormal[2] );
 		}else{
 			document.getElementById('frontBack').innerHTML = 'stable';  			 	
@@ -189,16 +182,13 @@ client.upDown = function() {
 
 		if( normalize >= topFlying || velocity >= stepVelocity ){
 			//going up
-			document.getElementById('upDown').innerHTML = 'up';
+			document.getElementById('upDown').innerHTML = 'Monte';
 			return this.flyThisWay( 'up', speed );
 
 		}else if( normalize <= botFlying || velocity <= -stepVelocity ){
 			//going down
-			document.getElementById('upDown').innerHTML = 'down';
+			document.getElementById('upDown').innerHTML = 'Descend';
 
-			/**
-			**A TESTER 
-			**/
 			if( this.altitude <= 0.15 ){
 				this.isFlying = false;
 				this.postOnFaye( { action : 'stop' }, '/UpDown' );
@@ -216,6 +206,25 @@ client.upDown = function() {
 	return false;
 
 };
+
+client.getMode = function(){
+
+	var numOfHands = this.frame.hands.length;
+	var numOfFingers = 0;
+
+	if( numOfHands > 0 ){
+		
+		for(var i = 0; i<numOfHands; i++){
+			numOfFingers += this.frame.hands[i].fingers.length;
+		}
+
+		if( numOfFingers > 5 ){
+			return 1;
+		}
+	}
+
+	return 0;
+}
 
 /**
 **the main routine each time we get a frame from the leap motion we analyze it
@@ -238,14 +247,16 @@ client.getFrame = function() {
 				}
 			}
 
-			if( _this.isFlying ){
+			if( _this.isFlying && _this.getMode() == 0 ){
 
 				if( _this.upDown() != false || _this.forwardBackward() != false || _this.leftRight() != false ){
-					document.getElementById('stab').innerHTML = 'MOVE!';
+					document.getElementById('stab').innerHTML = '<div class="alert alert-success">EN MOUVEMENT</div>';
 				}else{
-					document.getElementById('stab').innerHTML = 'STABLE!';	
+					document.getElementById('stab').innerHTML = '<div class="alert alert-info">STABLE</div>';	
 					return _this.postOnFaye( { action : 'stop' }, '/UpDown' );
 				}
+			}else if( _this.isFlying && _this.getMode() == 1 ){
+				_this.getFigure();
 			}
 
 		} else if( _this.isFlying == true ) {
@@ -259,6 +270,10 @@ client.getFrame = function() {
 
 	});
 };
+
+client.getFigure = function( tab ) {
+	
+}
 
 /**
 **handle the construction of the object that'll be send to the server through faye
@@ -292,8 +307,8 @@ client.showData =  function( data ) {
 	document.getElementById('Battery').innerHTML =  data.demo.batteryPercentage;
 	
 	if( data.droneState.emergencyLanding == 1 ){
-		this.isFlying = false; 
-		document.getElementById('emergency').innerHTML = '<strong> Drone choqué, appuillez sur entrée pour le retablir </strong>'; 
+		this.isFlying = false;     		
+		document.getElementById('emergency').innerHTML = '<div class="alert alert-danger"> <strong> Drone choqué, appuillez sur entrée pour le retablir </strong></div>';
 	}else{
 		document.getElementById('emergency').innerHTML = ''; 
 	}
@@ -310,12 +325,11 @@ client.showData =  function( data ) {
 client.run = function() {
 	this.configFaye();
 	this.configLeap();
-	new NodecopterStream(document.getElementById("droneStream"));
+	new NodecopterStream( document.getElementById( "droneStream" ) );
 	this.navdataRead();
 	this.controller.connect();
 	this.getFrame();
 };
-
 
 $( document ).keydown( function( ev ) {
 	if( ev.keyCode == 32 ){
