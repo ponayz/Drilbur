@@ -75,6 +75,7 @@ Serv.prototype = {
 	createClient:
 		function() {
 			this.client = arDrone.createClient();
+			//this.client.config('video:video_channel', 3);
 			
 			this.listener = new faye.Client( "http://localhost:" + this.portOf + "/faye" );
 
@@ -97,12 +98,10 @@ Serv.prototype = {
 				}						
 			});	
 
-			this.listener.subscribe( '/animate', function( data ){
-
-				if( typeof _this.client[ data.action ] == 'function' ){
-					console.log( 'figue : ' + data.action );
-					return _this.client.animate( data.action, data.duration );
-				}
+			this.listener.subscribe( '/Animate', function( data ){
+			
+				console.log( 'figue : ' + data.action + 'for : '+ data.duration );
+				return _this.client.animate( data.action, data.duration );
 			});
 
 			this.client.on('navdata', function( data ) {

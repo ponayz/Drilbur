@@ -26,8 +26,9 @@ client.turnClock = 1;
 client.turnCounterClock = 1;
 client.shakingMvt = 0;
 client.isFlying = false;
-client.altitude = 0;
+client.altitude = new Array();
 client.emergency;
+client.freeze = false;
 
 /**
 **configure faye on client side timeout at 120ms
@@ -177,7 +178,7 @@ client.upDown = function() {
 		var botFlying = 0.4;
 		var stepVelocity = 200;
 
-		speed = speed > 1 ? 0.9 : speed;
+		speed = speed >= 1 ? 0.9 : speed;
 
 
 		if( normalize >= topFlying || velocity >= stepVelocity ){
@@ -189,10 +190,10 @@ client.upDown = function() {
 			//going down
 			document.getElementById('upDown').innerHTML = 'Descend';
 
-			if( this.altitude <= 0.15 ){
+			if( this.getMeans() <= 0.15 ){
 				this.isFlying = false;
 				this.postOnFaye( { action : 'stop' }, '/UpDown' );
-				return this.postOnFaye( { action : 'land' }, 'UpDown' );
+				return this.postOnFaye( { action : 'land' }, '/UpDown' );
 			}
 			return this.flyThisWay( 'down', speed );
 
@@ -207,23 +208,46 @@ client.upDown = function() {
 
 };
 
-client.getMode = function(){
+/**
+**@TODO calibrate time for flip
+**/
+client.barrelRoll = function(){
+	
+	if( this.isFlying && this.frame.hands.length >= 1 ){
+		var firstHand = this.frame.hands[0];
 
-	var numOfHands = this.frame.hands.length;
-	var numOfFingers = 0;
+		if( firstHand.palmVelocity[1] > 2500 ){
+			this.freeze = true;
+			this.postOnFaye( { action : 'flipAhead', duration: 15 }, '/Animate' );
+			return setTimeout( function(){ client.freeze = false; },300);
 
-	if( numOfHands > 0 ){
-		
-		for(var i = 0; i<numOfHands; i++){
-			numOfFingers += this.frame.hands[i].fingers.length;
+		}else if( firstHand.palmVelocity[1] < -2000 ){
+			this.freeze = true;
+			this.postOnFaye( { action : 'flipBehind', duration: 15 }, '/Animate' );
+			return setTimeout( function(){ client.freeze = false; },300);
+
+		}else if( firstHand.palmVelocity[0] > 2500 ){		
+			this.freeze = true;
+			this.postOnFaye( { action : 'flipLeft', duration: 15 }, '/Animate' );
+			return setTimeout( function(){ client.freeze = false; },300);
+
+		}else if( firstHand.palmVelocity[0] < -2500 ){
+			this.freeze = true;
+			this.postOnFaye( { action : 'flipRight', duration: 15 }, '/Animate' );
+			return setTimeout( function(){ client.freeze = false; },300);
+
 		}
-
-		if( numOfFingers > 5 ){
-			return 1;
-		}
+		return false;
 	}
+	return false;
+}
 
-	return 0;
+client.getMeans = function(){
+	var sum = 0;
+	for( var i = 0; i< this.altitude.length; i++){
+		sum += this.altitude[i];
+	}
+	return sum/this.altitude.length;
 }
 
 /**
@@ -247,33 +271,24 @@ client.getFrame = function() {
 				}
 			}
 
-			if( _this.isFlying && _this.getMode() == 0 ){
-
-				if( _this.upDown() != false || _this.forwardBackward() != false || _this.leftRight() != false ){
+			if( _this.isFlying && !_this.freeze){
+				console.log(_this.freeze);
+				if( _this.barrelRoll() != false){
+					document.getElementById('stab').innerHTML = '<div class="alert alert-success">FIGURE</div>';
+				}else if( _this.upDown() != false || _this.forwardBackward() != false || _this.leftRight() != false ){
 					document.getElementById('stab').innerHTML = '<div class="alert alert-success">EN MOUVEMENT</div>';
 				}else{
 					document.getElementById('stab').innerHTML = '<div class="alert alert-info">STABLE</div>';	
 					return _this.postOnFaye( { action : 'stop' }, '/UpDown' );
 				}
-			}else if( _this.isFlying && _this.getMode() == 1 ){
-				_this.getFigure();
 			}
 
 		} else if( _this.isFlying == true ) {
-			_this.isFlying = false;
-			var action = {};
-			action.action = "land";
-			var channel = "/UpDown";
-			_this.postOnFaye( { action : 'stop' }, '/UpDown' );
-			return _this.postOnFaye( action, channel );	
+			return _this.postOnFaye( { action : 'stop' }, '/UpDown' );	
 		}
 
 	});
 };
-
-client.getFigure = function( tab ) {
-	
-}
 
 /**
 **handle the construction of the object that'll be send to the server through faye
@@ -313,7 +328,13 @@ client.showData =  function( data ) {
 		document.getElementById('emergency').innerHTML = ''; 
 	}
 
-	setTimeout( function () { _this.altitude = data.demo.altitude; }, 200 ); 
+	setTimeout( function () { 
+		client.altitude.push(data.demo.altitude); 
+		if (client.altitude.length >= 5){
+			client.altitude.splice(0,1);
+		}
+		
+	}, 200 );
 	document.getElementById('height').innerHTML =  data.demo.altitude;
 
 
