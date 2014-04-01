@@ -216,25 +216,25 @@ client.barrelRoll = function(){
 	if( this.isFlying && this.frame.hands.length >= 1 ){
 		var firstHand = this.frame.hands[0];
 
-		if( firstHand.palmVelocity[1] > 2500 ){
+		if( firstHand.palmVelocity[1] > 1700 ){
 			this.freeze = true;
 			this.postOnFaye( { action : 'flipAhead', duration: 15 }, '/Animate' );
-			return setTimeout( function(){ client.freeze = false; },300);
+			return setTimeout( function(){ client.freeze = false; },3000);
 
-		}else if( firstHand.palmVelocity[1] < -2000 ){
+		}else if( firstHand.palmVelocity[1] < -1600 ){
 			this.freeze = true;
 			this.postOnFaye( { action : 'flipBehind', duration: 15 }, '/Animate' );
-			return setTimeout( function(){ client.freeze = false; },300);
+			return setTimeout( function(){ client.freeze = false; },3000);
 
-		}else if( firstHand.palmVelocity[0] > 2500 ){		
+		}else if( firstHand.palmVelocity[0] < -1600 ){		
 			this.freeze = true;
 			this.postOnFaye( { action : 'flipLeft', duration: 15 }, '/Animate' );
-			return setTimeout( function(){ client.freeze = false; },300);
+			return setTimeout( function(){ client.freeze = false; },3000);
 
-		}else if( firstHand.palmVelocity[0] < -2500 ){
+		}else if( firstHand.palmVelocity[0] > 1600 ){
 			this.freeze = true;
 			this.postOnFaye( { action : 'flipRight', duration: 15 }, '/Animate' );
-			return setTimeout( function(){ client.freeze = false; },300);
+			return setTimeout( function(){ client.freeze = false; },3000);
 
 		}
 		return false;
